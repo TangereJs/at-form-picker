@@ -1,23 +1,203 @@
 <link rel="import" href="../tangere/tangere.html" />
+<link rel="import" href="../at-form-behaviors/at-form-behaviors.html">
+<link rel="import" href="../at-i18n/at-i18n-behavior.html">
+<link rel="import" href="../at-core-spinner/at-core-spinner.html">
+<link rel="import" href="../at-core-activity/at-core-activity.html">
+<link rel="import" href="../at-core-style-classes/at-core-style-classes.html">
+<link rel="import" href="../iron-label/iron-label.html">
+<link rel="import" href="../at-carbon-icon-button/at-carbon-icon-button.html">
+<link rel="import" href="../at-core-modal/at-core-modal.html">
+
 <dom-module id="at-form-picker">
   <template>
-    <style>
+    <style include="at-form-common"></style>
+    <style include="at-core-style-classes">
       :host {
         display: block;
         box-sizing: border-box;
       }
+
+      :host[disabled] {
+        @apply --at-form-disabled;
+        pointer-events: none;
+      }
     </style>
-    <div>at-form-picker is working</div>
-    <content></content>
+    <at-core-activity id="coreActivity" url="[[url]]"></at-core-activity>
+    <at-carbon-message id="carbonMessage" type="error" hidden></at-carbon-message>
+    <iron-label id="label" hidden$="[[hideLabel]]" class="block">[[label]]</iron-label>
+    <div id="contentContainer" class="layout-horizontal at-content-container">
+      <input type="text" id="pickerInput" class="layout-flex at-content">
+      <at-core-spinner id="coreSpinner" class="block layout-self-center"></at-core-spinner>
+      <at-carbon-icon-button id="iconButton" icon="[[icon]]" class="block"></at-carbon-icon-button>
+    </div>
+    <div id="hint"></div>
+    <at-core-modal id="coreModal"></at-core-modal>
   </template>
 </dom-module>
 <script>
   Polymer({
     is: "at-form-picker",
+    behaviors: [Tangere.behaviors.i18n, Tangere.behaviors.formUIGeneric],
     properties: {
 
+      url: {
+        type: String,
+        value: "",
+        title: "Url"
+      },
+
+      noPreload: {
+        type: Boolean,
+        value: false,
+        title: "No preload"
+      },
+
+      icon: {
+        type: String,
+        value: 'now:wrench',
+        title: "Icon"
+      },
+
+      modalComponent: {
+        type: String,
+        value: '',
+        title: "Modal component"
+      },
+
+      /**
+       * Element's value
+       * @property label
+       * @type String
+       * @default ""
+       */
+      value: {
+        type: String,
+        value: ''
+      },
+
+      /**
+       * Element's label
+       * @property label
+       * @type String
+       * @default ""
+       */
+      label: {
+        type: String,
+        value: '',
+        title: 'Label'
+      },
+
+      /**
+       * When true label is hidden
+       * @property hideLabel
+       * @type Boolean
+       * @default false
+       */
+      hideLabel: {
+        type: Boolean,
+        value: false,
+        title: 'Do not show the label'
+      },
+
+      /**
+       * Element's disabled state
+       * @property disabled
+       * @type Boolean
+       * @default false
+       */
+      disabled: {
+        type: Boolean,
+        value: false,
+        observer: '_disabledChanged',
+        title: 'Field value can not be changed'
+      },
+
+      /**
+       * Hides the element. When hidden nothing is displayed for the element
+       * @property hide
+       * @type Boolean
+       * @default false
+       */
+      hide: {
+        type: Boolean,
+        value: false,
+        observer: '_hideChanged',
+        title: 'Field is invisible'
+      },
+
+      /**
+       * Element's required state for element validation purposes
+       * @property required
+       * @type Boolean
+       * @default false
+       */
+      required: {
+        type: Boolean,
+        value: false,
+        title: 'Input required'
+      },
+
     },
+
+    observers: [
+      '_internalValidStateUpdate(required)'
+    ],
+
+    _disabledChanged: function (newValue, oldValue) {
+      this.toggleAttribute('disabled', newValue, this);
+      newValue ?
+        this.setAttribute('tabindex', "-1") :
+        this.removeAttribute('tabindex');
+    },
+
+    _hideChanged: function (newValue, oldValue) {
+      this.toggleAttribute('hidden', newValue, this);
+    },
+
     ready: function () {
+      this._isReady = true;
+    },
+
+    _internalValidStateUpdate: function (required) {
+      if (!this._isReady) return;
+      this.validate();
+    },
+
+    validate: function (showError) {
+      var validationResult = this._validateBaseData();
+      this._handleValidationResult(validationResult);
+      if (!validationResult.isValid) {
+        return validationResult.isValid;
+      }
+
+      return this._validate(showErorr);
+    },
+
+    _validate: function (showError) {
+      return false;
+    },
+
+    _updateUIValidState: function (isValid) {
+      var label = this.$.label;
+      this.toggleClass('error', !isValid, label);
+      var contentContainer = this.$.contentContainer;
+      this.toggleClass('error', !isValid, contentContainer);
+    },
+
+    // hint/validationAPI
+    _getFocusableElement: function () {
+      return this.$.pickerInput;
+    },
+
+    // 
+    // helper functions
+    // 
+    _clearMessage: function () {
+      this.$.carbonMessage.html = "";
+    },
+    
+    _setMessage: function (message) {
+      this.$.carbonMessage.html = message;
     }
   });
 </script>
