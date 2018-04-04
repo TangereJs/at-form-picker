@@ -27,6 +27,7 @@
     <iron-label id="label" hidden$="[[hideLabel]]" class="block">[[label]]</iron-label>
     <div id="contentContainer" class="layout-horizontal at-content-container">
       <div class="layout-flex at-content unselectable">[[_itemTitle]]</div>
+      <at-carbon-icon-button id="clearButton" hidden class="block" icon="now:cancel" on-tap="_handleClearButtonTap"></at-carbon-icon-button>
       <at-core-spinner id="coreSpinner" hidden class="block layout-self-center"></at-core-spinner>
       <at-carbon-icon-button id="iconButton" icon="[[icon]]" class="block" on-tap="_handleOpenModalButtonTap"></at-carbon-icon-button>
     </div>
@@ -134,7 +135,7 @@
     },
 
     observers: [
-      '_initialize(url, value)',
+      '_initializeElement(url, value)',
       '_internalValidStateUpdate(required)'
     ],
 
@@ -149,42 +150,61 @@
       this.toggleAttribute('hidden', newValue, this);
     },
 
+    _handleClearButtonTap: function(event) {
+      Polymer.dom(this.$.clearButton).setAttribute('hidden', '');
+      this.value = '';
+      this._fireValueChangedEvent();
+    },
+
     _handleOpenModalButtonTap: function(event) {
       this.$.coreModalElement.open();
     },
 
     _handleModalValueChanged: function(event) {
-      var initFn = this._initialize;
-      this._initialize = function() {};
-      this.value = event.detail.value;
-      this._initialize = initFn;
+      var initFn = this._initializeElement;
+      this._initializeElement = function() {};
 
-      this._itemTitle = this.value;
+      var item = event.detail.value;
+      this.value = item.id;
+      this._itemTitle = item.title;
+      this._fireValueChangedEvent();
+
+      this._initializeElement = initFn;
     },
 
     ready: function() {
       this._isReady = true;
     },
 
-    _initialize: function(url, value) {
+    _initializeElement: function(url, value) {
+      if (!value) {
+        this._itemTitle = '';
+      }
+      this.validate();
+
+      if (!url || !value) return;
+
       var itemUrl = url + "/" + value;
       this.$.coreActivity.url = itemUrl;
-      
+
       this.$.coreActivity.generateRequest();
       Polymer.dom(this.$.coreSpinner).removeAttribute('hidden');
     },
-    
+
     _handleValueActivityError: function(event) {
       Polymer.dom(this.$.coreSpinner).setAttribute('hidden', '');
+      this._itemTitle = '';
     },
 
     _handleValueActivityResponse: function(event) {
       Polymer.dom(this.$.coreSpinner).setAttribute('hidden', '');
 
       if (!event.detail.hasOwnProperty('Data')) return;
-      
+
       var item = event.detail.Data;
       this._itemTitle = item.title;
+
+      Polymer.dom(this.$.clearButton).removeAttribute('hidden');
     },
 
     _internalValidStateUpdate: function(required) {
@@ -193,17 +213,24 @@
     },
 
     validate: function(showError) {
+      if (showError === undefined) showError = this.autoValidate;
+
       var validationResult = this._validateBaseData();
       this._handleValidationResult(validationResult);
       if (!validationResult.isValid) {
         return validationResult.isValid;
       }
 
-      return this._validate(showErorr);
-    },
+      validationResult.isValid = !this.required || ([undefined, null, ""].indexOf(this.value) === -1);
+      if (!validationResult.isValid) {
+        validationResult.errorMessage = this.T("This field is required.");
+      }
 
-    _validate: function(showError) {
-      return false;
+      if (showError) {
+        this._handleValidationResult(validationResult);
+      }
+
+      return validationResult.isValid;
     },
 
     _updateUIValidState: function(isValid) {
@@ -215,7 +242,7 @@
 
     // hint/validationAPI
     _getFocusableElement: function() {
-      return this.$.pickerInput;
+      return this.$.iconButton;
     },
 
     // 
