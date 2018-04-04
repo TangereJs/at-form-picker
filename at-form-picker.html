@@ -6,7 +6,7 @@
 <link rel="import" href="../at-core-style-classes/at-core-style-classes.html">
 <link rel="import" href="../iron-label/iron-label.html">
 <link rel="import" href="../at-carbon-icon-button/at-carbon-icon-button.html">
-<link rel="import" href="../at-core-modal/at-core-modal.html">
+<link rel="import" href="../at-core-modal-element/at-core-modal-element.html">
 
 <dom-module id="at-form-picker">
   <template>
@@ -22,16 +22,16 @@
         pointer-events: none;
       }
     </style>
-    <at-core-activity id="coreActivity" url="[[url]]"></at-core-activity>
+    <at-core-activity id="coreActivity" on-response="_handleValueActivityResponse" on-error="_handleValueActivityError"></at-core-activity>
     <at-carbon-message id="carbonMessage" type="error" hidden></at-carbon-message>
     <iron-label id="label" hidden$="[[hideLabel]]" class="block">[[label]]</iron-label>
     <div id="contentContainer" class="layout-horizontal at-content-container">
-      <input type="text" id="pickerInput" class="layout-flex at-content">
-      <at-core-spinner id="coreSpinner" class="block layout-self-center"></at-core-spinner>
-      <at-carbon-icon-button id="iconButton" icon="[[icon]]" class="block"></at-carbon-icon-button>
+      <div class="layout-flex at-content unselectable">[[_itemTitle]]</div>
+      <at-core-spinner id="coreSpinner" hidden class="block layout-self-center"></at-core-spinner>
+      <at-carbon-icon-button id="iconButton" icon="[[icon]]" class="block" on-tap="_handleOpenModalButtonTap"></at-carbon-icon-button>
     </div>
     <div id="hint"></div>
-    <at-core-modal id="coreModal"></at-core-modal>
+    <at-core-modal-element id="coreModalElement" element-name="[[modalComponent]]" on-value-changed="_handleModalValueChanged"></at-core-modal-element>
   </template>
 </dom-module>
 <script>
@@ -44,12 +44,6 @@
         type: String,
         value: "",
         title: "Url"
-      },
-
-      noPreload: {
-        type: Boolean,
-        value: false,
-        title: "No preload"
       },
 
       icon: {
@@ -140,30 +134,65 @@
     },
 
     observers: [
+      '_initialize(url, value)',
       '_internalValidStateUpdate(required)'
     ],
 
-    _disabledChanged: function (newValue, oldValue) {
+    _disabledChanged: function(newValue, oldValue) {
       this.toggleAttribute('disabled', newValue, this);
       newValue ?
         this.setAttribute('tabindex', "-1") :
         this.removeAttribute('tabindex');
     },
 
-    _hideChanged: function (newValue, oldValue) {
+    _hideChanged: function(newValue, oldValue) {
       this.toggleAttribute('hidden', newValue, this);
     },
 
-    ready: function () {
+    _handleOpenModalButtonTap: function(event) {
+      this.$.coreModalElement.open();
+    },
+
+    _handleModalValueChanged: function(event) {
+      var initFn = this._initialize;
+      this._initialize = function() {};
+      this.value = event.detail.value;
+      this._initialize = initFn;
+
+      this._itemTitle = this.value;
+    },
+
+    ready: function() {
       this._isReady = true;
     },
 
-    _internalValidStateUpdate: function (required) {
+    _initialize: function(url, value) {
+      var itemUrl = url + "/" + value;
+      this.$.coreActivity.url = itemUrl;
+      
+      this.$.coreActivity.generateRequest();
+      Polymer.dom(this.$.coreSpinner).removeAttribute('hidden');
+    },
+    
+    _handleValueActivityError: function(event) {
+      Polymer.dom(this.$.coreSpinner).setAttribute('hidden', '');
+    },
+
+    _handleValueActivityResponse: function(event) {
+      Polymer.dom(this.$.coreSpinner).setAttribute('hidden', '');
+
+      if (!event.detail.hasOwnProperty('Data')) return;
+      
+      var item = event.detail.Data;
+      this._itemTitle = item.title;
+    },
+
+    _internalValidStateUpdate: function(required) {
       if (!this._isReady) return;
       this.validate();
     },
 
-    validate: function (showError) {
+    validate: function(showError) {
       var validationResult = this._validateBaseData();
       this._handleValidationResult(validationResult);
       if (!validationResult.isValid) {
@@ -173,11 +202,11 @@
       return this._validate(showErorr);
     },
 
-    _validate: function (showError) {
+    _validate: function(showError) {
       return false;
     },
 
-    _updateUIValidState: function (isValid) {
+    _updateUIValidState: function(isValid) {
       var label = this.$.label;
       this.toggleClass('error', !isValid, label);
       var contentContainer = this.$.contentContainer;
@@ -185,18 +214,18 @@
     },
 
     // hint/validationAPI
-    _getFocusableElement: function () {
+    _getFocusableElement: function() {
       return this.$.pickerInput;
     },
 
     // 
     // helper functions
     // 
-    _clearMessage: function () {
+    _clearMessage: function() {
       this.$.carbonMessage.html = "";
     },
-    
-    _setMessage: function (message) {
+
+    _setMessage: function(message) {
       this.$.carbonMessage.html = message;
     }
   });
