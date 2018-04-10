@@ -184,6 +184,8 @@
 
       if (!url || !value) return;
 
+      // TODO: if value is string append to path
+      // if value is object construct query from all properties
       var itemUrl = url + "/" + value;
       this.$.coreActivity.url = itemUrl;
 
