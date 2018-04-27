@@ -157,7 +157,13 @@
     },
 
     _handleOpenModalButtonTap: function(event) {
-      this.$.coreModalElement.open();
+      this.$.coreModalElement.open({
+        url: this.url,
+        value: { 
+          id: this.value,
+          title: this._itemTitle
+        }
+      });
     },
 
     _handleModalValueChanged: function(event) {
